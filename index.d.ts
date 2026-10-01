@@ -1241,6 +1241,23 @@ export interface Worksheet {
 	insertRows(pos: number, values: any[], style?: string): Row[];
 
 	/**
+	 * Insert rows as a workbook-level structural edit.
+	 *
+	 * Unlike insertRows/spliceRows, this maintains workbook structure:
+	 * formulas on every sheet (including cross-sheet and absolute-row
+	 * references), defined names, data validations, conditional formatting
+	 * and merged ranges are rewritten so they keep pointing at the shifted
+	 * cells. References that cannot be maintained reliably cause an error.
+	 *
+	 * @param pos 1-based position of the first inserted row
+	 * @param count number of rows to insert (default 1)
+	 * @param values optional row values for the inserted rows
+	 * @param options.inheritDataValidations new rows cutting through a
+	 *   validation area inherit its rule (default true)
+	 */
+	structuralInsertRows(pos: number, count?: number, values?: any[], options?: StructuralInsertOptions): Row[];
+
+	/**
 	 * Duplicate rows and insert new rows
 	 */
 	duplicateRow(rowNum: number, count: number, insert: boolean): void;
@@ -1435,6 +1452,16 @@ export interface AddWorksheetOptions {
 	headerFooter: Partial<HeaderFooter>;
 	views: Array<Partial<WorksheetView>>;
 	state: WorksheetState;
+}
+
+export interface StructuralInsertOptions {
+	/**
+	 * When the inserted rows cut through a data validation area, the new rows
+	 * inherit the same validation rule (Excel's default UI behaviour).
+	 * Set to false to leave new rows without validation.
+	 * @default true
+	 */
+	inheritDataValidations?: boolean;
 }
 
 export interface WorkbookProperties {
@@ -1769,6 +1796,26 @@ export class Workbook {
 	 * Note: `workbook.worksheets.forEach` will still work but this is better.
 	 */
 	eachSheet(callback: (worksheet: Worksheet, id: number) => void): void;
+
+	/**
+	 * Insert rows into a worksheet as a workbook-level structural edit.
+	 *
+	 * This rewrites formulas across the whole workbook, defined names, data
+	 * validations, conditional formatting and merged ranges so references
+	 * follow the shifted cells. See Worksheet#structuralInsertRows.
+	 *
+	 * @param worksheetNameOrId name or id of the worksheet to edit
+	 * @param pos 1-based position of the first inserted row
+	 * @param count number of rows to insert (default 1)
+	 * @param values optional row values for the inserted rows
+	 */
+	structuralInsertRows(
+		worksheetNameOrId: string | number,
+		pos: number,
+		count?: number,
+		values?: any[],
+		options?: StructuralInsertOptions
+	): Row[];
 
 	clearThemes(): void;
 
