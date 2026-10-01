@@ -1091,6 +1091,20 @@ export interface ConditionalFormattingOptions {
 	rules: ConditionalFormattingRule[];
 }
 
+export interface StructuralEditOptions {
+	/**
+	 * When a data-validation or conditional-formatting range is crossed
+	 * by the insertion, the range expands to cover the new rows.
+	 * Defaults to true. Set false to keep the rule's original extent.
+	 */
+	inheritValidations?: boolean;
+	/**
+	 * Copy row/cell styles from the row immediately above into each new
+	 * row. Defaults to false.
+	 */
+	inheritStyles?: boolean;
+}
+
 export interface Worksheet {
 	readonly id: number;
 	name: string;
@@ -1239,6 +1253,15 @@ export interface Worksheet {
 	 * by providing an array of arrays or key-value pairs
 	 */
 	insertRows(pos: number, values: any[], style?: string): Row[];
+
+	/**
+	 * Insert blank rows as a structural, workbook-wide edit.
+	 * Convenience wrapper around Workbook.structuralInsertRows - see that
+	 * method for the semantics. This adjusts formulas, defined names,
+	 * data validations and conditional formatting across the whole
+	 * workbook, not just this sheet's cell contents.
+	 */
+	structuralInsertRows(start: number, count: number, options?: StructuralEditOptions): Row[];
 
 	/**
 	 * Duplicate rows and insert new rows
@@ -1754,6 +1777,33 @@ export class Workbook {
 	 * Add a new worksheet and return a reference to it
 	 */
 	addWorksheet(name?: string, options?: Partial<AddWorksheetOptions>): Worksheet;
+
+	/**
+	 * Insert blank rows into a worksheet as a structural, workbook-wide
+	 * edit.
+	 *
+	 * Unlike Worksheet.insertRows/spliceRows, this keeps the whole
+	 * workbook consistent with the insertion: cell identities on and after
+	 * `start` move to their new rows, and formulas on every sheet
+	 * (including cross-sheet, range and absolute-row references), defined
+	 * names, data validations and conditional formatting follow them.
+	 * In-memory results match what is written to and read from xlsx.
+	 *
+	 * Throws without mutating the workbook when a reference cannot be
+	 * maintained reliably (e.g. INDIRECT, external workbooks, 3D
+	 * references spanning the edited sheet).
+	 *
+	 * @param target worksheet, its name or its id
+	 * @param start  1-based insert row
+	 * @param count  number of blank rows to insert
+	 * @param options optional structural edit options
+	 */
+	structuralInsertRows(
+		target: Worksheet | string | number,
+		start: number,
+		count: number,
+		options?: StructuralEditOptions
+	): Row[];
 
 	removeWorksheetEx(worksheet: Worksheet): void;
 	removeWorksheet(indexOrName: number | string): void;
